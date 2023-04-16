@@ -1,0 +1,285 @@
+////
+// varibales for ZFileUtils
+[VarDef,Zvers, 0]
+[VarDef,isMac, 0]
+[VarDef,separator, ""]
+[VarDef,dllPath, ""]
+[VarDef,dllVersion]
+[VarDef,minDllVersion]
+// variables for our plugins
+[VarDef,pluginDllPath, ""]
+// path to directory of this plugin
+[VarDef,rootPath, ""]
+[VarDef,rootPathWithoutPrefix, ""]
+[VarDef,tmpValue, 0]
+// variable for json string
+[VarDef, quote, [StrFromAsc, 34]]
+[MemCreate, jsonMem, 1024]
+[MemCreate, workingMem, 1024]
+[VarDef, bytesWritten, 0]
+
+//create memblock to get the path
+[MemCreate,MC_FolderPath,256,0]
+//create a memblock to get the file name
+[MemCreate,ZFileUtils_list, 256, 0]
+
+[VarDef,folderPath,""]
+[VarDef,fileName,""]
+[VarDef,filePath,""]
+
+//////
+// search dlls
+// from http://docs.pixologic.com/user-guide/customizing-zbrush/zscripting/zfileutils/#dllPath
+[RoutineDef, CheckSystem,	
+    //check ZBrush version
+    [VarSet,Zvers,[ZBrushInfo,0]]
+    [If,[Val,Zvers] >= 2021.0,,	
+        [Note,"\Cff9923This zscript\Cffffff is not designed for this version of 
+            \Cff9923ZBrush\Cffffff.",,3,4737096,,300]
+        [Exit]
+    ]
+    [VarSet,isMac, [ZBrushInfo,6]]	//check Mac or PC
+                                    // Make sure we have the dll and set its path
+    [If,[ZBrushInfo,16]==64,//64 bit
+        [If,isMac,
+            //use the path below for testing only
+            //[VarSet,rootPath,"ZImportFolder_2022/"]
+            //use the path below for installed plugins
+            [VarSet,rootPath,"ZBRUSH_ZSTARTUP/ZPlugs64/ZImportFolder_2022/"]
+            [VarSet, rootPath, [FileNameResolvePath, #rootPath]]
+            // for macOS, we remove first two characters ("!:")
+            [VarSet, rootPathWithoutPrefix, [StrExtract, #rootPath, 2, [StrLength, #rootPath] - 1]]
+
+            [VarSet,dllPath,[StrMerge, #rootPath,"ZFileUtils.lib"]]
+            [VarSet,dllPath,[StrMerge, #rootPath,"convert.lib"]]
+            [VarSet,separator,"/"]
+        ,
+            //use the path below for testing only
+            //[VarSet,rootPath,"ZImportFolder_2022/"]
+            //use the path below for installed plugins
+            [VarSet,rootPath,"ZBRUSH_ZSTARTUP/ZPlugs64/ZImportFolder_2022/"]
+            [VarSet, rootPath, [FileNameResolvePath, #rootPath]]
+            [Loop, [StrLength, rootPath],
+                [VarSet, tmpValue, [StrFind, "\", rootPath]]
+                [If, #tmpValue > -1,
+                    [VarSet, rootPath, [StrMerge, [StrExtract, rootPath, 0, tmpValue-1], "/", [StrExtract, rootPath, tmpValue+1, [StrLength, rootPath]-1]]],
+                    [LoopExit]
+                ]
+            ]
+            [VarSet, rootPathWithoutPrefix, #rootPath]
+
+            [VarSet,dllPath,[StrMerge, #rootPath,"ZFileUtils64.dll"]]
+            [VarSet,pluginDllPath,[StrMerge, #rootPath,"convert.dll"]]
+            [VarSet,separator,"/"]
+        ]
+    ,//else 32 bit - no longer supported
+        [Note,"\Cff9923This zscript\Cffffff is not designed for this version of 
+            \Cff9923ZBrush\Cffffff.",,3,4737096,,300]
+        [Exit]
+    ]
+
+    [If, [FileExists, [Var,dllPath]] && [FileExists, [Var,pluginDllPath]],
+        //check that correct version
+        [VarSet, dllVersion, [FileExecute, [Var,dllPath], Version]]
+        [If,isMac,
+            // for macOS, latest ZFileUtils is 4.8
+            [VarSet, minDllVersion, 4.8]
+            ,
+            [VarSet, minDllVersion, 8.0]
+        ]
+        [If, #dllVersion >= #minDllVersion,//dll version
+            //OK
+        ,//else earlier version
+            [Note,"\Cff9923Note :\Cc0c0c0 The \Cff9923 ZFileUtils plugin \CffffffDLL\Cc0c0c0 is 
+                an earlier version which does not support this plugin.  Please install correct version."]
+            [Exit]
+        ]
+    , // else no DLL.
+        [Note,"\Cff9923Note :\Cc0c0c0 The \Cff9923 ZFileUtils plugin \CffffffDLL\Cc0c0c0 could
+            not be found at the correct location.  Please re-install the plugin, making sure the 
+            relevant files and folders are in the \CffffffZStartup/ZPlugs\Cc0c0c0 folder."]
+        [Exit]
+    ]
+]
+//////
+
+//////
+// write str to mem (+ auto-resize)
+// note that strFragment must < 255 chars
+[RoutineDef, writeStrFragmentToJsonMem,
+    [If, [StrLength, strFragment]+#bytesWritten > [MemGetSize, jsonMem],
+        [MemCopy, jsonMem, 0, workingMem, 0, #bytesWritten]
+        [MemResize, jsonMem, [MemGetSize, jsonMem]+1024]
+        [MemCopy, workingMem, 0, jsonMem, 0, #bytesWritten]
+        [MemResize, workingMem, [MemGetSize, jsonMem]]
+    ]
+    [MemWriteString, jsonMem, strFragment, #bytesWritten]
+    [VarAdd, bytesWritten, [StrLength, strFragment]]
+, strFragment]
+
+
+//////
+// startup
+[RoutineCall, CheckSystem]
+
+//////
+// UI
+// button for offset
+[ISubPalette, "ZPlugin:ZImport Folder"]
+
+[ISwitch, "ZPlugin:ZImport Folder:*.GoZ", 0, "GoZ Format", , , , 0.25]
+[ISwitch, "ZPlugin:ZImport Folder:*.obj", 1, "OBJ Format", , , , 0.25]
+[ISwitch, "ZPlugin:ZImport Folder:*.mesh", 0, "Mesh ascii File", , , , 0.25]
+[ISwitch, "ZPlugin:ZImport Folder:*.ply", 1, "PLY", , , , 0.25]
+[ISwitch, "ZPlugin:ZImport Folder:*.stl", 1, "STL", , , , 0.25]
+[ISwitch, "ZPlugin:ZImport Folder:*.off", 0, "OFF", , , , 0.25]
+[ISwitch, "ZPlugin:ZImport Folder:*.wrl", 1, "VRML", , , , 0.25]
+
+[IButton, "ZPlugin:ZImport Folder:Import", "Import all supported files within a folder", 
+    [IFreeze,
+        [VarSet,err,[FileExecute, [Var,dllPath],ChooseFolder,,,MC_FolderPath]]
+        [If,err,
+            [Note,err]//function will return -1 if no folder chosen
+            [Exit]
+        ]
+
+        //copy path from memblock to variable
+        [MemReadString,MC_FolderPath,folderPath,0,1]
+        //show the selected folder path
+        //*** when using the path remember to append a slash before the file name!***
+        //*** for example:
+        //[VarSet,filePath,"My_Model.ztl"]
+        //[FileNameSetNext,[StrMerge,folderPath,"/",filePath]]
+
+        // generate JSON string
+        [RoutineCall, writeStrFragmentToJsonMem, "{"]
+            // rootPath
+            [RoutineCall, writeStrFragmentToJsonMem, [StrMerge, #quote, "root", #quote, ":", #quote, #rootPathWithoutPrefix, #quote, ","]]
+            // cleanup folderPath
+            [Loop, [StrLength, folderPath],
+                [VarSet, tmpValue, [StrFind, "\", folderPath]]
+                [If, #tmpValue > -1,
+                    [VarSet, folderPath, [StrMerge, [StrExtract, folderPath, 0, tmpValue-1], "/", [StrExtract, folderPath, tmpValue+1, [StrLength, folderPath]-1]]],
+                    [LoopExit]
+                ]
+            ]
+            // targetDirectory
+            [RoutineCall, writeStrFragmentToJsonMem, [StrMerge, #quote, "targetDirectory", #quote, ":", 
+            #quote, #folderPath, #quote, ","]]
+            // import
+            [RoutineCall, writeStrFragmentToJsonMem, [StrMerge, #quote, "import", #quote, ":{"]]
+                // import/goz
+                [If, [IGet, "ZPlugin:ZImport Folder:*.GoZ"],
+                    [RoutineCall, writeStrFragmentToJsonMem, [StrMerge, #quote, ".goz", #quote, ":", "true", ","]]
+                    ,
+                    [RoutineCall, writeStrFragmentToJsonMem, [StrMerge, #quote, ".goz", #quote, ":", "false", ","]]
+                ]
+                // import/obj
+                [If, [IGet, "ZPlugin:ZImport Folder:*.obj"],
+                    [RoutineCall, writeStrFragmentToJsonMem, [StrMerge, #quote, ".obj", #quote, ":", "true", ","]]
+                    ,
+                    [RoutineCall, writeStrFragmentToJsonMem, [StrMerge, #quote, ".obj", #quote, ":", "false", ","]]
+                ]
+                // import/mesh
+                [If, [IGet, "ZPlugin:ZImport Folder:*.mesh"],
+                    [RoutineCall, writeStrFragmentToJsonMem, [StrMerge, #quote, ".mesh", #quote, ":", "true", ","]]
+                    ,
+                    [RoutineCall, writeStrFragmentToJsonMem, [StrMerge, #quote, ".mesh", #quote, ":", "false", ","]]
+                ]
+                // import/ply
+                [If, [IGet, "ZPlugin:ZImport Folder:*.ply"],
+                    [RoutineCall, writeStrFragmentToJsonMem, [StrMerge, #quote, ".ply", #quote, ":", "true", ","]]
+                    ,
+                    [RoutineCall, writeStrFragmentToJsonMem, [StrMerge, #quote, ".ply", #quote, ":", "false", ","]]
+                ]
+                // import/stl
+                [If, [IGet, "ZPlugin:ZImport Folder:*.stl"],
+                    [RoutineCall, writeStrFragmentToJsonMem, [StrMerge, #quote, ".stl", #quote, ":", "true", ","]]
+                    ,
+                    [RoutineCall, writeStrFragmentToJsonMem, [StrMerge, #quote, ".stl", #quote, ":", "false", ","]]
+                ]
+                // import/off
+                [If, [IGet, "ZPlugin:ZImport Folder:*.off"],
+                    [RoutineCall, writeStrFragmentToJsonMem, [StrMerge, #quote, ".off", #quote, ":", "true", ","]]
+                    ,
+                    [RoutineCall, writeStrFragmentToJsonMem, [StrMerge, #quote, ".off", #quote, ":", "false", ","]]
+                ]
+                // import/wrl
+                [If, [IGet, "ZPlugin:ZImport Folder:*.wrl"],
+                    [RoutineCall, writeStrFragmentToJsonMem, [StrMerge, #quote, ".wrl", #quote, ":", "true"]]
+                    ,
+                    [RoutineCall, writeStrFragmentToJsonMem, [StrMerge, #quote, ".wrl", #quote, ":", "false"]]
+                ]
+            [RoutineCall, writeStrFragmentToJsonMem, "}"]
+        [RoutineCall, writeStrFragmentToJsonMem, "}"]
+        [MemResize, workingMem, #bytesWritten]
+        [MemCopy, jsonMem, 0, workingMem, 0, #bytesWritten]
+        [MemSaveToFile, workingMem, [StrMerge, #rootPath, #separator, "data", #separator, "parameters.txt"], 1]
+        [MemResize, jsonMem, 1024]
+        [MemResize, workingMem, 1024]
+        [VarSet, bytesWritten, 0]
+
+        ////
+        // call dll function
+        [VarSet, result, [FileExecute, #pluginDllPath, "convert", [StrMerge, #rootPathWithoutPrefix, #separator, "data", #separator, "parameters.txt"]]]
+
+        [If, result,
+            [VarSet,fileCount,[FileExecute,[Var,dllPath],"GetFileNumber",[StrMerge, #rootPath, #separator, "data"]]]
+            [If,fileCount < 0,
+                [Note,"Error getting number of files in folder"]
+                [Exit]
+            ]
+
+            //open the folder
+            [VarSet,err,[FileExecute,[Var,dllPath],"OpenFolder",[StrMerge, #rootPath, #separator, "data"]]]
+            //if we can't open the folder exit the zscript
+            [If,err,
+                [Note,"Error opening folder."]
+                [Exit]
+            ]
+
+
+            // import all GoZ files
+            [Loop,fileCount,//loop through the files
+                //get the fileName
+                [VarSet,err,[FileExecute,[Var,dllPath],"GetFile",,,ZFileUtils_list]]
+                //an error means we've reached the end of the list, so exit the loop
+                [If,err,
+                    [Note, "ERROR"]
+                    [LoopExit]
+                ]
+                //otherwise write the file name from the memblock to a variable
+                [MemReadString, ZFileUtils_list,fileName]
+                [VarSet, filePath, [StrMerge, #rootPath, #separator, "data", #separator, fileName]]
+
+                [If, [StrFind, [FileNameExtract, #fileName, 4], ".GoZ"] == 0,
+                    [VarSet, resIndex, [FileExecute, #dllPath, AppendNewSubTool, "tmp"]]
+                    [SubToolSelect, resIndex]
+                    // import offset mesh
+                    [FileNameSetNext, filePath]
+                    [IPress,"Tool:Import"]
+
+                ]
+            ]//end loop
+
+            [VarSet,err,[FileExecute,[Var,dllPath],"CloseFolder",[StrMerge, #rootPath, #separator, "data"]]]
+            [If,err,[Note,"Error closing folder."]]
+            
+            // remove temporary file
+            [VarSet,err,[FileExecute,[Var,dllPath],"EmptyFolder",[StrMerge, #rootPath, #separator, "data"]]]
+        ,
+            [Note, "Sorry, there is some error..."]
+        ]
+    ]
+    , 0, 1
+]
+
+
+// IEnable for ISwitches
+[IEnable, "ZPlugin:ZImport Folder:*.GoZ"]
+[IEnable, "ZPlugin:ZImport Folder:*.obj"]
+[IEnable, "ZPlugin:ZImport Folder:*.mesh"]
+[IEnable, "ZPlugin:ZImport Folder:*.ply"]
+[IEnable, "ZPlugin:ZImport Folder:*.stl"]
+[IEnable, "ZPlugin:ZImport Folder:*.off"]
+[IEnable, "ZPlugin:ZImport Folder:*.wrl"]

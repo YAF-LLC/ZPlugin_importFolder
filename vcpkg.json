@@ -1,0 +1,10 @@
+{
+    "name": "zbrush-importfolder",
+    "version-string": "2022",
+    "description": "",
+    "homepage": "https://github.com/n-taka/ZImportFolder",
+    "dependencies": [
+        "nlohmann-json",
+        "eigen3"
+    ]
+}
