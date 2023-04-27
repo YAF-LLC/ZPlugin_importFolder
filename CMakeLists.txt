@@ -1,3 +1,17 @@
+#
+# Copyright (C) 2023 Kazutaka Nakashima (kazutaka.nakashima@n-taka.info)
+#
+# GPLv3
+#
+# This file is part of importFolder.
+#
+# importFolder is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+#
+# importFolder is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with importFolder. If not, see <https://www.gnu.org/licenses/>.
+#
+
 cmake_minimum_required(VERSION 3.20)
 
 if(WIN32)
@@ -84,10 +98,10 @@ endif ()
 #####################
 if (WIN32)
     add_custom_command(TARGET ${PROJECT} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/build/Release/plugin/Release/convert.dll" "$<TARGET_FILE_DIR:${PROJECT}>")
-    add_custom_command(TARGET ${PROJECT} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/build/Release/plugin/Release/convert.dll" "${CMAKE_CURRENT_SOURCE_DIR}/ZPlugs64/ZImportFolder_2022/convert.dll")
+    add_custom_command(TARGET ${PROJECT} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/build/Release/plugin/Release/convert.dll" "${CMAKE_CURRENT_SOURCE_DIR}/ZPlugs64/importFolder_2022/convert.dll")
 elseif (APPLE)
     add_custom_command(TARGET ${PROJECT} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/build/Release/plugin/libconvert.dylib" "$<TARGET_FILE_DIR:${PROJECT}>/convert.lib")
-    add_custom_command(TARGET ${PROJECT} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/build/Release/plugin/libconvert.dylib" "${CMAKE_CURRENT_SOURCE_DIR}/ZPlugs64/ZImportFolder_2022/convert.lib")
+    add_custom_command(TARGET ${PROJECT} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/build/Release/plugin/libconvert.dylib" "${CMAKE_CURRENT_SOURCE_DIR}/ZPlugs64/importFolder_2022/convert.lib")
 endif ()
 ###########################
 ##### Resources (end) #####
