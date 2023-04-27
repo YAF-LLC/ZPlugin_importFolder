@@ -18,7 +18,7 @@ if(WIN32)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif ()
 
-set(PROJECT ZBrush_ZImportFolder)
+set(PROJECT ZPlugin_importFolder)
 project(${PROJECT})
 
 # version
