@@ -65,7 +65,7 @@
             [VarSet, rootPathWithoutPrefix, [StrExtract, #rootPath, 2, [StrLength, #rootPath] - 1]]
 
             [VarSet,dllPath,[StrMerge, #rootPath,"ZFileUtils.lib"]]
-            [VarSet,dllPath,[StrMerge, #rootPath,"convert.lib"]]
+            [VarSet,pluginDllPath,[StrMerge, #rootPath,"convert.lib"]]
             [VarSet,separator,"/"]
         ,
             //use the path below for testing only
