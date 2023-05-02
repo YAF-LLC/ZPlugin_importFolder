@@ -1,8 +1,8 @@
 {
-    "name": "zbrush-importfolder",
+    "name": "zplugin-importfolder",
     "version-string": "2022",
     "description": "",
-    "homepage": "https://github.com/n-taka/ZImportFolder",
+    "homepage": "https://github.com/n-taka/ZPlugin_importFolder",
     "dependencies": [
         "nlohmann-json",
         "eigen3"
